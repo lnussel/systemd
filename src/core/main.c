@@ -1469,6 +1469,10 @@ static void initialize_coredump(bool skip_setup) {
         if (getpid_cached() != 1)
                 return;
 
+        /* just use kernel defaults if systemd-coredump isn't actually available */
+         if (access(ROOTLIBEXECDIR "/systemd-coredump", F_OK) < 0)
+                 return;
+
         /* Don't limit the core dump size, so that coredump handlers such as systemd-coredump (which honour the limit)
          * will process core dumps for system services by default. */
         if (setrlimit(RLIMIT_CORE, &RLIMIT_MAKE_CONST(RLIM_INFINITY)) < 0)
