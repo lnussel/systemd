@@ -1818,6 +1818,14 @@ if conf.get('ENABLE_LOGIND') == 1
                 endif
         endif
 
+        executable('logind-compat-tasks-max-generator',
+                   'src/login/compat-tasks-max-generator.c',
+                   include_directories : includes,
+                   link_with : [libshared, liblogind_core],
+                   install_rpath : rootlibexecdir,
+                   install : true,
+                   install_dir : systemgeneratordir)
+
         executable('systemd-user-runtime-dir',
                    user_runtime_dir_sources,
                    include_directories : includes,

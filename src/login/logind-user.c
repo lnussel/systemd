@@ -847,17 +847,50 @@ int config_parse_compat_user_tasks_max(
                 void *data,
                 void *userdata) {
 
+        uint64_t *m = data;
+        uint64_t k;
+        int r;
+
         assert(filename);
         assert(lvalue);
         assert(rvalue);
         assert(data);
 
-        log_syntax(unit, LOG_NOTICE, filename, line, 0,
+        log_syntax(unit, LOG_WARNING, filename, line, 0,
                    "Support for option %s= has been removed.",
                    lvalue);
-        log_info("Hint: try creating /etc/systemd/system/user-.slice.d/50-limits.conf with:\n"
-                 "        [Slice]\n"
-                 "        TasksMax=%s",
-                 rvalue);
+
+        if (isempty(rvalue)) {
+                *m = system_tasks_max_scale(DEFAULT_USER_TASKS_MAX_PERCENTAGE, 100U);
+                return 0;
+        }
+
+        if (streq(rvalue, "infinity")) {
+                *m = CGROUP_LIMIT_MAX;
+                return 0;
+        }
+
+        /* Try to parse as percentage */
+        r = parse_percent(rvalue);
+        if (r >= 0)
+                k = system_tasks_max_scale(r, 100U);
+        else {
+
+                /* If the passed argument was not a percentage, or out of range, parse as byte size */
+
+                r = safe_atou64(rvalue, &k);
+                if (r < 0) {
+                        log_syntax(unit, LOG_ERR, filename, line, r, "Failed to parse tasks maximum, ignoring: %s", rvalue);
+                        return 0;
+                }
+        }
+
+        if (k <= 0 || k >= UINT64_MAX) {
+                log_syntax(unit, LOG_ERR, filename, line, 0, "Tasks maximum out of range, ignoring: %s", rvalue);
+                return 0;
+        }
+
+        *m = k;
+
         return 0;
 }
